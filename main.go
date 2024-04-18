@@ -23,10 +23,10 @@ type Card struct {
 }
 
 type ChargeRequest struct {
-	Description string `json:"description"`
-	Amount      int    `json:"amount"`
-	Currency    string `json:"currency"`
-	Card        Card   `json:"card"`
+	Description string  `json:"description"`
+	Amount      float64 `json:"amount"`
+	Currency    string  `json:"currency"`
+	Card        Card    `json:"card"`
 }
 
 const (
@@ -39,26 +39,38 @@ func main() {
 	fileName := "./data/fng.1000.csv.rot128"
 	decryptCSVFile(fileName)
 	decryptedFileName := "./data/decrypted_fng.1000.csv.rot128"
-
-	csvFile, err := os.Open(decryptedFileName)
+	donors, totalReceived, successfullyDonated, faultyDonation, averagePerPerson, err := processPayments(decryptedFileName)
 	if err != nil {
-		fmt.Println("Error opening the decrypted CSV file:", err)
+		fmt.Println("Error processing payments:", err)
 		return
+	}
+	printSummary(donors, totalReceived, successfullyDonated, faultyDonation, averagePerPerson)
+
+}
+
+func processPayments(decryptedFilename string) (map[string]float64, float64, float64, float64, float64, error) {
+	// Open the decrypted CSV file
+	csvFile, err := os.Open(decryptedFilename)
+	if err != nil {
+		return nil, 0, 0, 0, 0, (fmt.Errorf("Error opening the decrypted CSV file: %v", err))
 	}
 	defer csvFile.Close()
 
+	// Create a CSV reader
 	reader := csv.NewReader(csvFile)
 	reader.FieldsPerRecord = 6 // Name,AmountSubunits,CCNumber,CVV,ExpMonth,ExpYear
 
+	// Read all lines from the CSV
 	lines, err := reader.ReadAll()
 	if err != nil {
-		fmt.Println("Error reading the CSV file:", err)
-		return
+		return nil, 0, 0, 0, 0, (fmt.Errorf("Error reading the CSV file: %v", err))
 	}
 
+	// Initialize variables to track donation statistics
 	var totalReceived, successfullyDonated, faultyDonation float64
 	donors := make(map[string]float64)
 
+	// Process each line in the CSV
 	for _, line := range lines {
 		name := line[0]
 		amountSubunits, err := strconv.Atoi(line[1])
@@ -67,7 +79,7 @@ func main() {
 			continue
 		}
 
-		amount := (amountSubunits)
+		amount := float64(amountSubunits)
 		ccNumber := line[2]
 		cvv := line[3]
 		expMonth, _ := strconv.Atoi(line[4])
@@ -78,7 +90,7 @@ func main() {
 
 		// Check if expiration date is in the past
 		if expDate.Before(time.Now()) {
-			fmt.Printf("(400/invalid_card) expiration date cannot be in the past")
+			fmt.Printf("(400/invalid_card) expiration date cannot be in the past\n")
 			continue
 		}
 
@@ -94,37 +106,25 @@ func main() {
 				ExpirationYear:  expYear,
 			},
 		}
-
-		// Initialize Omise client
 		client, err := initializeOmiseClient()
 		if err != nil {
-			fmt.Printf("Error initializing Omise client: %v\n", err)
-			return
+			return nil, 0, 0, 0, 0, (fmt.Errorf("Error initializing Omise client: %v", err))
 		}
-		//create token
+
 		token, err := createToken(client, chargeRequest)
 		if err != nil {
-			fmt.Printf("Error creating token: %v\n", err)
-			return
+			return nil, 0, 0, 0, 0, (fmt.Errorf("Error creating token: %v", err))
 		}
-		//create charge
 		chargeResponse, err := createCharge(client, chargeRequest, token)
 		if err != nil {
-			fmt.Printf("Error creating charge: %v\n", err)
-			return
+			return nil, 0, 0, 0, 0, (fmt.Errorf("Error creating charge: %v", err))
 		}
-
-		//fmt.Printf("Successfully donated THB %.2f for %s\n", float64(chargeResponse.Amount)/100, name)
 		successfullyDonated += float64(chargeResponse.Amount)
 		donors[line[0]] += float64(amount)
-
 	}
-
 	totalReceived = successfullyDonated + faultyDonation
-	averagePerPerson := totalReceived / float64(len(lines))
-
-	printSummary(donors, totalReceived, successfullyDonated, faultyDonation, averagePerPerson)
-
+	averagePerPerson := (totalReceived) / float64(len(lines)-1)
+	return donors, totalReceived, successfullyDonated, faultyDonation, averagePerPerson, nil
 }
 
 func printTopDonors(donors map[string]float64) {
@@ -236,9 +236,9 @@ func createCharge(client *omise.Client, chargeRequest ChargeRequest, token *omis
 func printSummary(donors map[string]float64, totalReceived, successfullyDonated, faultyDonation, averagePerPerson float64) {
 	fmt.Println("\n\nperforming donations...")
 	fmt.Println("done.")
-	fmt.Printf("\nTotal received: THB %.2f\n", float64(totalReceived)/100)
-	fmt.Printf("Successfully donated: THB %.2f\n", float64(successfullyDonated)/100)
-	fmt.Printf("Faulty donation: THB %.2f\n", float64(faultyDonation)/100)
+	fmt.Printf("\nTotal received: THB %.2f\n", float64(totalReceived))
+	fmt.Printf("Successfully donated: THB %.2f\n", float64(successfullyDonated))
+	fmt.Printf("Faulty donation: THB %.2f\n", float64(faultyDonation))
 	fmt.Printf("\n\taverage per person: THB %.2f\n", averagePerPerson)
 	fmt.Println("\ttop donors:")
 	printTopDonors(donors)
