@@ -1,4 +1,4 @@
-# GO-TAMBOON ไปทำบุญ
+# Challenge Golang
 
 This is a small challenge project 
 
