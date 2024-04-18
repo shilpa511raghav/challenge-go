@@ -96,37 +96,22 @@ func main() {
 		}
 
 		// Initialize Omise client
-		client, e := omise.NewClient(OmisePublicKey, OmiseSecretKey)
-		if e != nil {
-			fmt.Printf("error in calling a omise client %v", e)
-		}
-
-		//Create a token to use in create Charge API
-		token, create := &omise.Token{}, &operations.CreateToken{
-			Name:            chargeRequest.Card.Name,
-			Number:          chargeRequest.Card.Number,
-			ExpirationMonth: time.Month(expMonth),
-			ExpirationYear:  chargeRequest.Card.ExpirationYear,
-			SecurityCode:    chargeRequest.Card.SecurityCode,
-		}
-		if e := client.Do(token, create); e != nil {
-			fmt.Printf("error in prcessing payment %v", e)
-			panic(e)
-		}
-
-		//Create charge
-		createCharge := &operations.CreateCharge{
-			Amount:   int64(amount), // ฿ 1,000.00
-			Currency: "THB",
-			Card:     token.ID,
-		}
-
-		chargeResponse := &omise.Charge{}
-		err = client.Do(chargeResponse, createCharge)
+		client, err := initializeOmiseClient()
 		if err != nil {
-			faultyDonation += float64(amount)
-			fmt.Printf("error in creating charge %v", err)
-			continue
+			fmt.Printf("Error initializing Omise client: %v\n", err)
+			return
+		}
+		//create token
+		token, err := createToken(client, chargeRequest)
+		if err != nil {
+			fmt.Printf("Error creating token: %v\n", err)
+			return
+		}
+		//create charge
+		chargeResponse, err := createCharge(client, chargeRequest, token)
+		if err != nil {
+			fmt.Printf("Error creating charge: %v\n", err)
+			return
 		}
 
 		//fmt.Printf("Successfully donated THB %.2f for %s\n", float64(chargeResponse.Amount)/100, name)
@@ -197,6 +182,55 @@ func decryptCSVFile(fileName string) {
 
 	//fmt.Printf("decryption is completed %s", decryptedFileName)
 
+}
+
+// initialize omise client
+func initializeOmiseClient() (*omise.Client, error) {
+	client, err := omise.NewClient(OmisePublicKey, OmiseSecretKey)
+	if err != nil {
+		fmt.Printf("error in calling an omise client %v\n", err)
+		return nil, err
+	}
+	return client, nil
+}
+
+// Create a token
+func createToken(client *omise.Client, chargeRequest ChargeRequest) (*omise.Token, error) {
+
+	tokenRequest := &operations.CreateToken{
+		Name:            chargeRequest.Card.Name,
+		Number:          chargeRequest.Card.Number,
+		ExpirationMonth: time.Month(chargeRequest.Card.ExpirationMonth),
+		ExpirationYear:  chargeRequest.Card.ExpirationYear,
+		SecurityCode:    chargeRequest.Card.SecurityCode,
+	}
+
+	token := &omise.Token{}
+	if err := client.Do(token, tokenRequest); err != nil {
+		fmt.Printf("error in generating token %v\n", err)
+		return nil, err
+	}
+
+	return token, nil
+}
+
+// Create charge
+func createCharge(client *omise.Client, chargeRequest ChargeRequest, token *omise.Token) (*omise.Charge, error) {
+
+	createCharge := &operations.CreateCharge{
+		Amount:   int64(chargeRequest.Amount),
+		Currency: chargeRequest.Currency,
+		Card:     token.ID,
+	}
+
+	chargeResponse := &omise.Charge{}
+	err := client.Do(chargeResponse, createCharge)
+	if err != nil {
+		fmt.Printf("error in creating charge %v\n", err)
+		return nil, err
+	}
+
+	return chargeResponse, nil
 }
 
 func printSummary(donors map[string]float64, totalReceived, successfullyDonated, faultyDonation, averagePerPerson float64) {
