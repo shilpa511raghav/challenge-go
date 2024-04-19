@@ -185,10 +185,10 @@ func createCharge(client *omise.Client, chargeRequest ChargeRequest, token *omis
 func PrintSummary(donors map[string]float64, totalReceived, successfullyDonated, faultyDonation, averagePerPerson float64) {
 	fmt.Println("\n\nperforming donations...")
 	fmt.Println("done.")
-	fmt.Printf("\nTotal received: THB %.2f\n", float64(totalReceived))
-	fmt.Printf("Successfully donated: THB %.2f\n", float64(successfullyDonated))
-	fmt.Printf("Faulty donation: THB %.2f\n", float64(faultyDonation))
-	fmt.Printf("\n\taverage per person: THB %.2f\n", averagePerPerson)
+	fmt.Printf("\nTotal received: THB %.2f\n", float64(totalReceived)/100)
+	fmt.Printf("Successfully donated: THB %.2f\n", float64(successfullyDonated)/100)
+	fmt.Printf("Faulty donation: THB %.2f\n", float64(faultyDonation)/100)
+	fmt.Printf("\n\taverage per person: THB %.2f\n", averagePerPerson/100)
 	fmt.Println("\ttop donors:")
 	printTopDonors(donors)
 }
