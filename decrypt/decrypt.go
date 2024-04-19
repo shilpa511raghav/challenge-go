@@ -2,35 +2,33 @@ package decrypt
 
 import (
 	"challenge-go/cipher"
-	"fmt"
 	"io/ioutil"
 	"os"
 )
 
-func DecryptCSVFile(fileName string) {
+func DecryptCSVFile(inputFileName string, outputFileName string) (err error) {
 
 	//open encrypted file for reading
-	encryptedFile, err := os.Open(fileName)
+	encryptedFile, err := os.Open(inputFileName)
 	if err != nil {
-		fmt.Printf("error in opening a file %v", err)
+		return err
 	}
 	defer encryptedFile.Close()
 
 	//read an encryptedFile
-	encryptedData, err2 := ioutil.ReadAll(encryptedFile)
+	encryptedData, err := ioutil.ReadAll(encryptedFile)
 
-	if err2 != nil {
-		fmt.Println("Error in reading file", err)
-		return
+	if err != nil {
+		return err
 	}
 	//decrypt data
 	decryptedData := cipher.Rot128Decrypt(encryptedData)
 
 	//write the decrypted data into a new file
-	decryptedFileName := "./data/decrypted_fng.1000.csv.rot128"
-	os.WriteFile(decryptedFileName, decryptedData, 0644)
-	if err != nil {
-		fmt.Printf("error in decrpting file %v", err)
+	err2 := os.WriteFile(outputFileName, decryptedData, 0644)
+	if err2 != nil {
+		return err2
 	}
 
+	return nil
 }
