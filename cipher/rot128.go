@@ -43,7 +43,7 @@ func rot128(buf []byte) {
 		buf[idx] += 128
 	}
 }
-func rot128Decrypt(data []byte) []byte {
+func Rot128Decrypt(data []byte) []byte {
 	for index := range data {
 		data[index] -= 128
 	}
