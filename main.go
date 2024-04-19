@@ -10,7 +10,7 @@ import (
 func main() {
 	encyptedFileName := "./data/fng.1000.csv.rot128"
 	decryptedFileName := "./data/decrypted_fng.1000.csv.rot128"
-	err := decrypt.DecryptCSVFile(encyptedFileName, decryptedFileName)
+	decrypt.DecryptCSVFile(encyptedFileName, decryptedFileName)
 
 	donors, totalReceived, successfullyDonated, faultyDonation, averagePerPerson, err := payment.ProcessPayments(decryptedFileName)
 	if err != nil {
